@@ -15,3 +15,11 @@
 .study-divider{cursor:col-resize;touch-action:none;background:#f1f1f1;position:relative;outline-offset:-2px}.study-divider::after{content:"";position:absolute;width:2px;height:32px;top:calc(50% - 16px);left:3px;border-radius:2px;background:#c9c9c9}.study-divider:hover,.study-divider:focus-visible,.resizing .study-divider{background:#e3e3e3}.study-columns.resizing{user-select:none;cursor:col-resize}.study-columns.resizing .viewer,.study-columns.resizing .chat{pointer-events:none}.composer>textarea{font-size:14px}
 
 .brand{gap:10px;font-size:23px;letter-spacing:-1px;color:#242424}.brand-mark{width:24px;height:31px;display:block;flex-shrink:0}
+
+/* Align actions to the title itself, independently of subtitles and metadata. */
+.page-header{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:30px;row-gap:0;align-items:center}
+.page-header>div:first-child{display:contents}
+.page-header h1{grid-column:1;grid-row:2;margin:0}
+.page-header .eyebrow{grid-column:1;grid-row:1;margin:0 0 9px}
+.page-header .description{grid-column:1;grid-row:3;margin:12px 0 0}
+.page-header>.primary,.page-header>.header-actions,.page-header>.score,.page-header>.badge{grid-column:2;grid-row:2;align-self:center;margin-top:0}
