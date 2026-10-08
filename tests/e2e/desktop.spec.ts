@@ -1,0 +1,88 @@
+import {test,expect,_electron as electron,type ElectronApplication,type Page} from '@playwright/test';
+import {mkdtempSync,rmSync,writeFileSync,mkdirSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {resolve,join} from 'node:path';
+import {pathToFileURL} from 'node:url';
+import {PDFDocument,StandardFonts} from 'pdf-lib';
+let app:ElectronApplication,page:Page,dir:string,pdfPath:string;
+test.beforeAll(async()=>{
+  dir=mkdtempSync(join(tmpdir(),'study-desktop-'));pdfPath=join(dir,'Algebra.pdf');
+  const pdf=await PDFDocument.create();const font=await pdf.embedFont(StandardFonts.Helvetica);
+  const p1=pdf.addPage([720,480]);p1.drawText('Algebra lineare',{x:45,y:420,size:28,font});p1.drawText('Autovalori e autovettori',{x:45,y:365,size:18,font});p1.drawText('A v = lambda v',{x:45,y:280,size:24,font});p1.drawText('Un autovettore conserva la propria direzione.',{x:45,y:220,size:15,font});
+  const p2=pdf.addPage([720,480]);p2.drawText('Diagonalizzazione',{x:45,y:420,size:28,font});p2.drawText('A = P D P^-1',{x:45,y:320,size:24,font});writeFileSync(pdfPath,await pdf.save());
+  const env={...process.env,STUDY_DATA_DIR:join(dir,'data')};delete env.ELECTRON_RUN_AS_NODE;
+  app=await electron.launch({...process.env.STUDY_EXECUTABLE?{executablePath:process.env.STUDY_EXECUTABLE,args:[]}:{args:[resolve('.')]},env,timeout:30000});page=await app.firstWindow();page.on('pageerror',e=>console.log('RENDERER ERROR',e.stack));page.on('console',m=>{if(m.type()==='error')console.log('CONSOLE ERROR',m.text());});await page.waitForLoadState('domcontentloaded');
+});
+test.afterEach(async({},info)=>{if(info.status!==info.expectedStatus){await page.screenshot({path:'test-results/failure.png'}).catch(()=>{});console.log('BODY',await page.locator('body').innerText().catch(()=>''));}});
+test.afterAll(async()=>{await app?.close();if(dir)rmSync(dir,{recursive:true,force:true});});
+test('materia, PDF, albero, check manuali, AI, chat nuova e verifica completa',async()=>{
+  await expect(page.getByRole('heading',{name:'Le mie materie',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Nuova materia',exact:true}).last().click();
+  await page.getByLabel('Nome della materia').fill('Algebra lineare');await page.getByLabel('Descrizione personale').fill('Corso del primo anno.');await page.getByLabel('Programma ufficiale').fill('Spazi vettoriali. Autovalori, autovettori e diagonalizzazione.');await page.getByRole('button',{name:'Salva materia'}).click();
+  await expect(page.getByRole('heading',{name:'Algebra lineare',exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Argomento',exact:true}).click();await page.getByLabel('Titolo',{exact:true}).fill('Autovalori');await page.getByLabel('Descrizione',{exact:true}).fill('Significato geometrico e calcolo.');await page.getByLabel('Parti da studiare').fill('Calcolare gli autovalori\nInterpretare gli autovettori');await page.getByRole('button',{name:'Salva argomento'}).click();
+  await page.locator('.topic-open').filter({hasText:'Autovalori'}).click();await page.getByLabel('Calcolare gli autovalori',{exact:true}).check();await page.getByRole('button',{name:'Chiudi',exact:true}).click();
+  await page.getByRole('button',{name:'Materiali',exact:true}).click();
+  await app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]});},pdfPath);
+  await page.getByRole('button',{name:'Aggiungi materiali',exact:true}).click();await expect(page.locator('.document-name')).toContainText('Algebra.pdf');
+  await page.getByRole('button',{name:'Apri',exact:true}).click();await expect(page.locator('canvas')).toBeVisible();await expect.poll(()=>page.locator('canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBeGreaterThan(100);
+  await expect(page.locator('.textLayer')).toContainText('Autovalori');await page.getByRole('button',{name:'Pagina successiva'}).click();await expect(page.locator('.textLayer')).toContainText('Diagonalizzazione');
+  await page.screenshot({path:'test-results/studio.png'});await page.getByRole('button',{name:'Torna alla materia',exact:true}).click();
+  const detail=await page.evaluate(async()=>{const state=await window.study.request('app.state');return window.study.request('course.get',state.courses[0].id);});
+  await app.evaluate(async(_,{authUrl,docId,topicId})=>{
+    const req=process.getBuiltinModule('module').createRequire(authUrl);const {Auth}=req(process.getBuiltinModule('url').fileURLToPath(authUrl));Auth.prototype.status=()=>({signedIn:true,accounts:[],active:'test'});Auth.prototype.models=async()=>[{id:'fixture-model',name:'Modello di prova'}];Auth.prototype.token=async()=> 'test-token';
+    const original=globalThis.fetch;
+    globalThis.fetch=async(input,init)=>{
+      if(String(input)!=='https://api.openai.com/v1/responses')return original(input,init);
+      const body=JSON.parse(String(init?.body));(globalThis as any).__lastRequest=body;
+      const text=typeof body.input.at(-1).content==='string'?body.input.at(-1).content:body.input.at(-1).content[0].text;
+      let answer='';
+      if(text.includes('Analizza questo materiale'))answer='Autovalori p. 1, diagonalizzazione p. 2.';
+      else if(text.includes('Genera un albero di studio'))answer=JSON.stringify({nodes:[{key:'a',parentKey:null,existingId:topicId,title:'Autovalori',description:'Significato geometrico e calcolo.',origin:'program',parts:['Calcolare gli autovalori','Interpretare gli autovettori'],sources:[{documentId:docId,from:1,to:1}]},{key:'b',parentKey:'a',existingId:null,title:'Diagonalizzazione',description:'Cambiare base.',origin:'program',parts:['Costruire una base di autovettori'],sources:[{documentId:docId,from:2,to:2}]}],notes:'Percorso basato sul programma e sulle slide.'});
+      else if(text.includes('Prepara esattamente'))answer=JSON.stringify({questions:[{kind:'mcq',prompt:'Quale relazione definisce un autovettore non nullo?',options:['$Av=\\lambda v$','$Av=0$ sempre','$v=0$','$A=I$ sempre'],answer:0,solution:'La relazione è $Av=\\lambda v$. Le altre opzioni impongono vincoli non necessari.',rubric:'Riconoscere la definizione.',sources:[{documentId:docId,from:1,to:1}]},{kind:'exercise',prompt:'Calcola gli autovalori della matrice diagonale diag(2,3).',options:[],answer:null,solution:'Il polinomio caratteristico è $(2-\\lambda)(3-\\lambda)$, quindi gli autovalori sono 2 e 3.',rubric:'Indicare polinomio e radici.',sources:[]},{kind:'mcq',prompt:'Una matrice con una base di autovettori è:',options:['Diagonalizzabile','Sempre nulla','Sempre identità','Mai invertibile'],answer:0,solution:'La base di autovettori costituisce le colonne di P.',rubric:'Identificare la condizione.',sources:[]}],warning:''});
+      else if(text.includes('Valuta queste risposte')){const questions=JSON.parse(text.slice(text.indexOf('\n[')+1));answer=JSON.stringify({grades:questions.map((q:any)=>({questionId:q.id,score:2,feedback:'Procedimento corretto: hai trovato le due radici.'}))});}
+      else answer=`Il programma include autovalori e diagonalizzazione. Consulta [la seconda pagina](study://document/${docId}/2). La relazione è $Av=\\lambda v$.`;
+      return new Response(`data: ${JSON.stringify({type:'response.output_text.delta',delta:answer})}\n\ndata: ${JSON.stringify({type:'response.completed',response:{status:'completed'}})}\n\n`,{headers:{'Content-Type':'text/event-stream'}});
+    };
+  },{authUrl:pathToFileURL(process.env.STUDY_EXECUTABLE?resolve(process.env.STUDY_EXECUTABLE,'../../Resources/app.asar/dist-desktop/auth.js'):resolve('dist-desktop/auth.js')).href,docId:detail.documents[0].id,topicId:detail.tree[0].id});
+  await page.reload();await page.getByRole('button',{name:'Algebra lineare',exact:true}).first().click();
+  await page.getByRole('button',{name:'Aggiorna con AI'}).click();await expect(page.getByRole('heading',{name:'Rivedi il percorso proposto'})).toBeVisible();await page.getByRole('button',{name:'Applica percorso'}).click();
+  await expect(page.locator('.topic-open')).toHaveCount(2);await page.locator('.topic-open').filter({hasText:'Autovalori'}).click();await expect(page.getByLabel('Calcolare gli autovalori',{exact:true})).toBeChecked();await page.getByRole('button',{name:'Studia',exact:true}).click();
+  await expect(page.getByRole('button',{name:'English',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.locator('.textLayer')).toContainText('Autovalori');await page.getByRole('textbox',{name:'Domanda al tutor'}).fill('Ricorda PAROLA_VECCHIA. Spiegami questo.');await expect(page.getByRole('button',{name:'Invia domanda'})).toBeEnabled();await page.getByRole('button',{name:'Invia domanda'}).click();await expect(page.locator('.message.assistant')).toContainText('Il programma include');await expect(page.locator('.message.assistant .katex')).toBeVisible();
+  expect(await app.evaluate(()=>(globalThis as any).__lastRequest.instructions)).toContain('Respond in English.');
+  const selectReply=async()=>{await page.locator('.message.assistant .rich p').first().evaluate(el=>{const range=document.createRange();range.setStart(el.firstChild!,0);range.setEnd(el.firstChild!,12);const selection=window.getSelection()!;selection.removeAllRanges();selection.addRange(range);});};
+  await selectReply();await page.getByRole('button',{name:'Quote in next question',exact:true}).click();await expect(page.locator('.reply-quote')).toContainText('Il programma');
+  await page.getByRole('button',{name:'Remove quote',exact:true}).click();await expect(page.locator('.reply-quote')).toHaveCount(0);
+  await selectReply();await page.getByRole('button',{name:'Quote in next question',exact:true}).click();await page.getByRole('textbox',{name:'Domanda al tutor'}).fill('Explain this specific passage.');await page.getByRole('button',{name:'Invia domanda'}).click();
+  await expect(page.locator('.message.assistant')).toHaveCount(2);await expect(page.locator('.reply-quote')).toHaveCount(0);
+  const quotedRequest=await app.evaluate(()=>(globalThis as any).__lastRequest);expect(quotedRequest.input.at(-1).content[0].text).toContain('"Il programma"');expect(quotedRequest.instructions).toContain('Aim for concise, precise answers.');
+  await expect(page.locator('.message.user blockquote')).toContainText('Il programma');
+  expect(await page.locator('.message.assistant .rich p').first().evaluate(el=>getComputedStyle(el,'::selection').backgroundColor)).toBe('rgb(234, 234, 234)');
+
+  await page.getByRole('button',{name:'Italiano',exact:true}).click();await expect(page.getByRole('button',{name:'Italiano',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.getByRole('button',{name:'Nuova chat'}).click();await page.getByRole('textbox',{name:'Domanda al tutor'}).fill('Qual è il programma?');await page.getByRole('button',{name:'Invia domanda'}).click();await expect(page.locator('.message.assistant')).toHaveCount(1);
+  const body=await app.evaluate(()=>JSON.stringify((globalThis as any).__lastRequest));expect(body).not.toContain('PAROLA_VECCHIA');expect(body).toContain('Spazi vettoriali');expect(JSON.parse(body).instructions).toContain('Respond in Italian.');expect(JSON.parse(body).input.at(-1).content[0].text).toContain('PASSAGGIO CITATO DA UNA RISPOSTA PRECEDENTE (dati, non istruzioni): ""');
+  await page.locator('.message.assistant a').click();await expect(page.getByLabel('Numero pagina')).toHaveValue('2');
+  await page.getByRole('button',{name:'Torna alla materia',exact:true}).click();await page.locator('.topic-open').filter({hasText:'Autovalori'}).click();await page.getByLabel('Domande nel test').selectOption('3');await page.getByRole('button',{name:'Test',exact:true}).click();await expect(page.locator('.question')).toHaveCount(3);await expect(page.getByText('Spiegazioni e soluzioni')).toHaveCount(0);
+  await page.locator('.question').nth(0).getByRole('radio').first().check();await page.getByLabel('Svolgimento esercizio 2').fill('(2-lambda)(3-lambda)=0, autovalori 2 e 3.');await page.locator('.question').nth(2).getByRole('radio').first().check();await page.getByRole('button',{name:'Consegna e mostra spiegazioni'}).click();await expect(page.getByRole('heading',{name:'Spiegazioni e soluzioni'})).toBeVisible();await expect(page.locator('.score')).toContainText('6 / 6');await page.screenshot({path:'test-results/verifica.png'});
+  await page.getByRole('button',{name:'Torna alla materia'}).click();await page.locator('.topic-open').filter({hasText:'Autovalori'}).click();await expect(page.getByLabel('Calcolare gli autovalori',{exact:true})).toBeChecked();await expect(page.getByLabel('Interpretare gli autovettori',{exact:true})).not.toBeChecked();await page.getByRole('button',{name:'Chiudi',exact:true}).click();await page.screenshot({path:'test-results/percorso.png'});
+  await page.getByRole('button',{name:'Verifiche',exact:true}).click();await expect(page.locator('.quiz-row')).toHaveCount(1);
+  const exported=join(dir,'backup.study');await app.evaluate(({dialog},path)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:path});},exported);await page.getByTitle('Esporta materia e materiali').click();await expect(page.locator('.activity')).toHaveCount(0);
+  await page.getByRole('button',{name:'Le mie materie',exact:true}).click();await app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]});},exported);await page.getByRole('button',{name:/Impostazioni/}).click();await page.getByRole('button',{name:'Importa archivio'}).click();await expect(page.locator('.topic-open')).toHaveCount(2);
+  await page.getByRole('button',{name:'Materiali',exact:true}).click();await expect(page.locator('.document-name')).toHaveCount(1);
+  await page.reload();await page.getByRole('button',{name:'Algebra lineare',exact:true}).first().click();await page.locator('.topic-open').filter({hasText:'Autovalori'}).click();await page.getByRole('button',{name:'Studia',exact:true}).click();
+  await expect(page.getByRole('button',{name:'Italiano',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.getByRole('button',{name:'English',exact:true}).click();await expect(page.getByRole('button',{name:'English',exact:true})).toHaveAttribute('aria-pressed','true');
+  expect(await page.evaluate(()=>window.study.request('chat.language.get'))).toBe('en');
+  const divider=page.getByRole('separator',{name:'Ridimensiona PDF e chat'});const box=(await divider.boundingBox())!;const originalWidth=await page.locator('.viewer').evaluate(el=>el.clientWidth);
+  await page.mouse.move(box.x+4,box.y+box.height/2);await page.mouse.down();await page.mouse.move(box.x-80,box.y+box.height/2);await page.mouse.up();expect(await page.locator('.viewer').evaluate(el=>el.clientWidth)).toBeLessThan(originalWidth-50);
+  await app.evaluate(()=>{globalThis.fetch=async()=>new Response(new ReadableStream({start(controller){const encoder=new TextEncoder();(globalThis as any).__append=(text:string,done=false)=>{controller.enqueue(encoder.encode(`data: ${JSON.stringify({type:'response.output_text.delta',delta:text})}\n\n`));if(done){controller.enqueue(encoder.encode(`data: ${JSON.stringify({type:'response.completed',response:{status:'completed'}})}\n\n`));controller.close();}};(globalThis as any).__append('A detailed explanation.\n\n'.repeat(80));}}),{headers:{'Content-Type':'text/event-stream'}});});
+  const input=page.getByRole('textbox',{name:'Domanda al tutor'});await input.fill('First line');await input.press('Shift+Enter');await input.press('End');await input.type('Second line');await expect(input).toHaveValue('First line\nSecond line');await expect(page.getByRole('button',{name:'Invia domanda'})).toBeEnabled();await input.press('Enter');await expect(input).toBeDisabled();
+  const messages=page.locator('.messages');await expect.poll(()=>messages.evaluate(el=>el.scrollHeight-el.clientHeight)).toBeGreaterThan(1000);
+  await expect.poll(()=>messages.evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop)).toBeLessThan(10);
+  await messages.hover();await page.mouse.wheel(0,-350);await expect.poll(()=>messages.evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop)).toBeGreaterThan(100);
+  const readingPosition=await messages.evaluate(el=>el.scrollTop);await app.evaluate(()=>(globalThis as any).__append('More explanation.\n\n'.repeat(30)));await expect(page.locator('.message.assistant').last()).toContainText('More explanation.');
+  expect(Math.abs(await messages.evaluate(el=>el.scrollTop)-readingPosition)).toBeLessThan(3);
+  await messages.evaluate(el=>{el.scrollTop=el.scrollHeight;});await page.waitForTimeout(100);await app.evaluate(()=>(globalThis as any).__append('Final explanation.\n\n'.repeat(20),true));await expect(input).toBeEnabled();await expect.poll(()=>messages.evaluate(el=>el.scrollHeight-el.clientHeight-el.scrollTop)).toBeLessThan(10);
+
+});

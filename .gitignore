@@ -1,0 +1,16 @@
+node_modules/
+dist/
+dist-desktop/
+.local-data/
+.DS_Store
+*.log
+.env*
+
+release/
+test-results/
+playwright-report/
+
+Study.app/
+assets/icon.iconset/
+
+stemhelp.app/
