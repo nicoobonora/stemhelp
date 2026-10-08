@@ -15,6 +15,9 @@ else if(app.isPackaged&&existsSync(join(adjacent,'.study-project')))app.setPath(
 if(!app.requestSingleInstanceLock()){app.quit();}else{
 let window:BrowserWindow|undefined,store:CourseStore,auth:Auth,service:StudyService;
 app.whenReady().then(async()=>{
+  const iconPath=join(root,'assets/icon.png');
+  if(process.platform==='darwin')app.dock?.setIcon(iconPath);
+  app.setAboutPanelOptions({applicationName:'stemhelp',iconPath});
   const directory=app.getPath('userData');mkdirSync(directory,{recursive:true,mode:0o700});
   const dbPath=join(directory,'study.sqlite');
   // Preserve a snapshot before the first schema expansion, without touching credentials.
@@ -44,7 +47,7 @@ app.whenReady().then(async()=>{
     {label:'Vista',submenu:[{role:'resetZoom'},{role:'zoomIn'},{role:'zoomOut'},{type:'separator'},{role:'togglefullscreen'}]},
     {label:'Finestra',submenu:[{role:'minimize'},{role:'close'}]}
   ]));
-  window=new BrowserWindow({width:1440,height:940,minWidth:1000,minHeight:680,title:'stemhelp',backgroundColor:'#fafafa',webPreferences:{preload:join(root,'dist-desktop/preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  window=new BrowserWindow({icon:iconPath,width:1440,height:940,minWidth:1000,minHeight:680,title:'stemhelp',backgroundColor:'#fafafa',webPreferences:{preload:join(root,'dist-desktop/preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));window.webContents.on('will-navigate',event=>event.preventDefault());
   window.on('close',event=>{if(service.busy()){const choice=dialog.showMessageBoxSync(window!,{type:'question',buttons:['Continua a lavorare','Interrompi e chiudi'],defaultId:0,cancelId:0,message:'È in corso un’operazione AI. Vuoi interromperla?',detail:'Le risposte già salvate rimarranno disponibili.'});if(choice===0){event.preventDefault();return;}}service.cancel();auth.cancelLogin();});
   window.on('closed',()=>{window=undefined;app.quit();});
