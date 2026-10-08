@@ -23,3 +23,5 @@
 .page-header .eyebrow{grid-column:1;grid-row:1;margin:0 0 9px}
 .page-header .description{grid-column:1;grid-row:3;margin:12px 0 0}
 .page-header>.primary,.page-header>.header-actions,.page-header>.score,.page-header>.badge{grid-column:2;grid-row:2;align-self:center;margin-top:0}
+
+.continuous-page{margin:0 auto 24px;flex-shrink:0}.continuous-page:last-child{margin-bottom:0}

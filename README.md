@@ -11,7 +11,7 @@ stemhelp brings your syllabus, slides, study roadmap, questions, and practice te
 - **Organize subjects:** keep an official syllabus, personal description, PDFs, and text notes for each course. Paste a syllabus or import it from a public course webpage.
 - **Build a study roadmap:** generate an editable topic tree from the syllabus and available materials. Review the proposal before applying it. Add more slides as the course progresses.
 - **Track progress yourself:** mark individual learning objectives as studied. The AI never checks them for you.
-- **Study alongside your slides:** view PDFs and chat side by side, resize the panels by dragging the divider, and follow source links back to their pages.
+- **Study alongside your slides:** scroll continuously through PDF pages alongside the chat, resize the panels by dragging the divider, and follow source links back to their pages. Arrows and the page-number field remain available; the chat follows the page currently in view.
 - **Ask focused questions:** include selected PDF text, an image of the current page, or a quoted passage from a tutor reply. Switch replies between English (default) and Italian.
 - **Practice:** generate multiple-choice questions and written exercises for a topic. Save unfinished attempts; reveal feedback and worked solutions after submission.
 - **Back up a subject:** export its materials, roadmap, checks, and tests as a `.study` archive; import it from Settings.

@@ -25,8 +25,13 @@ test('materia, PDF, albero, check manuali, AI, chat nuova e verifica completa',a
   await page.getByRole('button',{name:'Materiali',exact:true}).click();
   await app.evaluate(({dialog},path)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[path]});},pdfPath);
   await page.getByRole('button',{name:'Aggiungi materiali',exact:true}).click();await expect(page.locator('.document-name')).toContainText('Algebra.pdf');
-  await page.getByRole('button',{name:'Apri',exact:true}).click();await expect(page.locator('canvas')).toBeVisible();await expect.poll(()=>page.locator('canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBeGreaterThan(100);
-  await expect(page.locator('.textLayer')).toContainText('Autovalori');await page.getByRole('button',{name:'Pagina successiva'}).click();await expect(page.locator('.textLayer')).toContainText('Diagonalizzazione');
+  await page.getByRole('button',{name:'Apri',exact:true}).click();await expect(page.locator('[data-page="1"] canvas')).toBeVisible();await expect.poll(()=>page.locator('[data-page="1"] canvas').evaluate((c:HTMLCanvasElement)=>c.width)).toBeGreaterThan(100);
+  await expect(page.locator('[data-page="1"] .textLayer')).toContainText('Autovalori');await page.getByRole('button',{name:'Pagina successiva'}).click();await expect(page.locator('[data-page="2"] .textLayer')).toContainText('Diagonalizzazione');
+  await expect(page.getByLabel('Numero pagina')).toHaveValue('2');
+  await page.locator('.pdf-scroll').hover();await page.mouse.wheel(0,-2000);await expect(page.getByLabel('Numero pagina')).toHaveValue('1');
+  await page.mouse.wheel(0,2000);await expect(page.getByLabel('Numero pagina')).toHaveValue('2');await expect(page.locator('.chat-context')).toContainText('p. 2');
+  await page.getByRole('button',{name:'Pagina precedente'}).click();await expect(page.getByLabel('Numero pagina')).toHaveValue('1');
+  await page.getByLabel('Numero pagina').fill('2');await page.getByLabel('Numero pagina').press('Enter');await expect(page.locator('.chat-context')).toContainText('p. 2');
   await page.screenshot({path:'test-results/studio.png'});await page.getByRole('button',{name:'Torna alla materia',exact:true}).click();
   const detail=await page.evaluate(async()=>{const state=await window.study.request('app.state');return window.study.request('course.get',state.courses[0].id);});
   await app.evaluate(async(_,{authUrl,docId,topicId})=>{
@@ -48,7 +53,7 @@ test('materia, PDF, albero, check manuali, AI, chat nuova e verifica completa',a
   await page.reload();await page.getByRole('button',{name:'Algebra lineare',exact:true}).first().click();
   await page.getByRole('button',{name:'Aggiorna con AI'}).click();await expect(page.getByRole('heading',{name:'Rivedi il percorso proposto'})).toBeVisible();await page.getByRole('button',{name:'Applica percorso'}).click();
   await expect(page.locator('.topic-open')).toHaveCount(2);await page.locator('.topic-open').filter({hasText:'Autovalori'}).click();await expect(page.getByLabel('Calcolare gli autovalori',{exact:true})).toBeChecked();await page.getByRole('button',{name:'Studia',exact:true}).click();
-  await expect(page.getByRole('button',{name:'English',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.locator('.textLayer')).toContainText('Autovalori');await page.getByRole('textbox',{name:'Domanda al tutor'}).fill('Ricorda PAROLA_VECCHIA. Spiegami questo.');await expect(page.getByRole('button',{name:'Invia domanda'})).toBeEnabled();await page.getByRole('button',{name:'Invia domanda'}).click();await expect(page.locator('.message.assistant')).toContainText('Il programma include');await expect(page.locator('.message.assistant .katex')).toBeVisible();
+  await expect(page.getByRole('button',{name:'English',exact:true})).toHaveAttribute('aria-pressed','true');await expect(page.locator('[data-page="1"] .textLayer')).toContainText('Autovalori');await page.getByRole('textbox',{name:'Domanda al tutor'}).fill('Ricorda PAROLA_VECCHIA. Spiegami questo.');await expect(page.getByRole('button',{name:'Invia domanda'})).toBeEnabled();await page.getByRole('button',{name:'Invia domanda'}).click();await expect(page.locator('.message.assistant')).toContainText('Il programma include');await expect(page.locator('.message.assistant .katex')).toBeVisible();
   expect(await app.evaluate(()=>(globalThis as any).__lastRequest.instructions)).toContain('Respond in English.');
   const selectReply=async()=>{await page.locator('.message.assistant .rich p').first().evaluate(el=>{const range=document.createRange();range.setStart(el.firstChild!,0);range.setEnd(el.firstChild!,12);const selection=window.getSelection()!;selection.removeAllRanges();selection.addRange(range);});};
   await selectReply();await page.getByRole('button',{name:'Quote in next question',exact:true}).click();await expect(page.locator('.reply-quote')).toContainText('Il programma');
