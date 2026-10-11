@@ -80,13 +80,15 @@ If macOS blocks your own local build, use its **Privacy & Security** settings to
 - **Enter:** send a question.
 - **Shift + Enter:** insert a newline.
 - **EN / IT:** choose the response language; your preference is saved.
-- **Quote in next question:** select text in a tutor reply, then use the quote button. Review or remove the quote above the input before sending.
+- **Highlight and ask:** select text in a PDF, note, or tutor reply. Type your question in the inline box and press Enter to add a **Question** card to the chat draft. Send it when ready, or remove it with ×. You can queue up to five questions.
+- **PDF zoom:** pinch on the trackpad, or hold Ctrl/Cmd while scrolling the mouse wheel over the PDF. Normal scrolling still moves through the document; the toolbar zoom controls remain available.
+- **Temporary attachments:** use the paperclip to add PDF, TXT, Markdown, CSV, PNG, JPEG, or WebP files to the current chat. Files remain available for follow-up messages until removed or the chat is reset. They are never added to course materials or exported archives.
 - **Auto-scroll:** follows new output until you scroll up. Return to the bottom to resume following it.
 - **Nuova chat:** clear the current conversation while retaining the course context.
 
 ## Storage and privacy
 
-Course data, copied materials, study checks, and tests are stored locally in SQLite and a `materials` folder. Chat history is temporary and is cleared when the app closes.
+Course data, copied materials, study checks, and tests are stored locally in SQLite and a `materials` folder. Chat history and temporary attachments are held in memory and cleared when the app closes or you choose **Nuova chat**. Removing an attachment stops including the file in future requests, but does not erase information already discussed in the current chat.
 
 - **Source launch (`npm start`):** data is stored in `.local-data/` inside the project folder.
 - **Packaged app:** data normally uses Electron's per-user application data directory under the legacy name `study-quadernone` (for example, `~/Library/Application Support/study-quadernone` on macOS).
@@ -95,13 +97,13 @@ Course data, copied materials, study checks, and tests are stored locally in SQL
 
 The legacy storage identity and `.study` archive format are retained so the rename from Study does not discard existing data. Moving the packaged app to another location can select a different archive; export/import subjects if you need to transfer them. Back up the data directory with the app closed, or export individual subjects from the app.
 
-AI processing is remote. Relevant syllabus text, retrieved passages, your question, chat context, and an optional page image are sent to OpenAI. Credentials are encrypted through Electron safeStorage and the OS credential store; they are excluded from subject exports. Linux requires a supported secure credential backend for sign-in.
+AI processing is remote. Relevant syllabus text, retrieved passages, your question, chat context, an optional page image, and any temporary chat attachments are sent to OpenAI when you send a question. Credentials are encrypted through Electron safeStorage and the OS credential store; they are excluded from subject exports. Linux requires a supported secure credential backend for sign-in.
 
 `.local-data/`, generated applications, build output, and local environment files are ignored by Git. Do not commit personal course archives, credentials, or copyrighted course materials when publishing a repository.
 
 ## Current limitations
 
-- PDFs can be up to 100 MB each. Password-protected files must be unlocked before import.
+- Course PDFs can be up to 100 MB each. Temporary chat attachments are limited to five files, 20 MB per file, 80,000 extracted characters per file, and 120,000 text characters per chat. PDF attachments use extracted text; scanned pages should be attached as images. Password-protected files must be unlocked before import.
 - Scanned PDFs can be discussed using the current page image, but automatic course-wide OCR is not implemented. The roadmap relies on extractable text and the supplied syllabus.
 - Webpage import does not bypass sign-in, CAPTCHA, or JavaScript-only content. Paste the syllabus when import cannot read it.
 - Generated explanations, exercises, and grading can be wrong. Source references are checked for valid documents and page ranges, not mathematical correctness.

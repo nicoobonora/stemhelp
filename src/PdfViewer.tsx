@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getDocument, GlobalWorkerOptions, TextLayer, type PDFDocumentProxy, type RenderTask } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import 'pdfjs-dist/web/pdf_viewer.css';
@@ -17,7 +17,7 @@ function PdfPage({pdf,number,width,zoom,ratio,root,onReady,onError}:{pdf:PDFDocu
     (async()=>{
       const item=await pdf.getPage(number);if(!active)return;
       const natural=item.getViewport({scale:1});setAspect(natural.width/natural.height);
-      const scale=width/natural.width*zoom,viewport=item.getViewport({scale}),pixelRatio=Math.min(devicePixelRatio||1,2);
+      const scale=width/natural.width*zoom,viewport=item.getViewport({scale}),pixelRatio=Math.min(devicePixelRatio||1,2,Math.sqrt(16000000/(viewport.width*viewport.height)));
       element.width=Math.floor(viewport.width*pixelRatio);element.height=Math.floor(viewport.height*pixelRatio);element.style.width=viewport.width+'px';element.style.height=viewport.height+'px';
       container.replaceChildren();container.style.setProperty('--scale-factor',String(scale));container.style.setProperty('--total-scale-factor',String(scale));container.style.width=viewport.width+'px';container.style.height=viewport.height+'px';
       task=item.render({canvas:element,viewport,transform:[pixelRatio,0,0,pixelRatio,0,0]});await task.promise;if(!active)return;
@@ -33,6 +33,25 @@ export function PdfViewer({documents,documentId,page,onNavigate,onSnapshot,onErr
   const [pdf,setPdf]=useState<PDFDocumentProxy|null>(null),[note,setNote]=useState(''),[loading,setLoading]=useState(false),[zoom,setZoom]=useState(1),[width,setWidth]=useState(600),[draftPage,setDraftPage]=useState(String(page)),[ratio,setRatio]=useState(1.414);
   const holder=useRef<HTMLDivElement>(null),snapshot=useRef<PageSnapshot>({documentId,page,selection:'',ready:false}),images=useRef(new Map<number,string>()),scrolledPage=useRef<number|null>(null),current=useRef({documentId,page,onSnapshot,onNavigate,onError});
   current.current={documentId,page,onSnapshot,onNavigate,onError};
+  const zoomValue=useRef(1),zoomAnchor=useRef<{number:number;x:number;y:number;clientX:number;clientY:number}|null>(null);
+  useEffect(()=>{
+    const box=holder.current;if(!box)return;
+    let frame=0;
+    const wheel=(event:WheelEvent)=>{
+      if(!(event.ctrlKey||event.metaKey)||!box.querySelector('[data-page]'))return;
+      event.preventDefault();
+      const sheets=Array.from(box.querySelectorAll<HTMLElement>('[data-page]'));
+      const sheet=sheets.find(el=>{const r=el.getBoundingClientRect();return event.clientY>=r.top&&event.clientY<=r.bottom;})||sheets.find(el=>Number(el.dataset.page)===current.current.page);
+      if(sheet){const r=sheet.getBoundingClientRect();zoomAnchor.current={number:Number(sheet.dataset.page),x:(event.clientX-r.left)/r.width,y:(event.clientY-r.top)/r.height,clientX:event.clientX,clientY:event.clientY};}
+      zoomValue.current=Math.max(.6,Math.min(3,zoomValue.current*Math.exp(-event.deltaY*(event.deltaMode===1?.04:.006))));
+      cancelAnimationFrame(frame);frame=requestAnimationFrame(()=>setZoom(zoomValue.current));
+    };
+    box.addEventListener('wheel',wheel,{passive:false});return()=>{box.removeEventListener('wheel',wheel);cancelAnimationFrame(frame);};
+  },[]);
+  useLayoutEffect(()=>{zoomValue.current=zoom;const anchor=zoomAnchor.current,box=holder.current;if(!anchor||!box)return;const sheet=box.querySelector<HTMLElement>(`[data-page="${anchor.number}"]`);if(sheet){const r=sheet.getBoundingClientRect();box.scrollLeft+=r.left+r.width*anchor.x-anchor.clientX;box.scrollTop+=r.top+r.height*anchor.y-anchor.clientY;}zoomAnchor.current=null;},[zoom]);
+  const jumping=useRef(false),jumpFrame=useRef(0),typingPage=useRef(false);
+  const jumpTo=(number:number)=>{if(number===current.current.page)return;jumping.current=true;scrolledPage.current=null;onNavigate(documentId,number);};
+  useEffect(()=>()=>cancelAnimationFrame(jumpFrame.current),[]);
   const doc=documents.find(d=>d.id===documentId);
   const changeSnapshot=(s:PageSnapshot)=>{snapshot.current=s;current.current.onSnapshot(s);};
   const ready=useCallback((number:number,image?:string)=>{if(current.current.documentId!==documentId)return;if(image)images.current.set(number,image);else images.current.delete(number);if(current.current.page===number)changeSnapshot({documentId:current.current.documentId,page:number,image,selection:'',ready:!!image});},[documentId]);
@@ -50,14 +69,16 @@ export function PdfViewer({documents,documentId,page,onNavigate,onSnapshot,onErr
     }).catch(e=>{if(active)onError(e.message);}).finally(()=>{if(active)setLoading(false);});
     return()=>{active=false;void loadingTask?.destroy();};
   },[documentId]);
-  useEffect(()=>{
+  useLayoutEffect(()=>{
     if(!pdf||!holder.current)return;
-    if(scrolledPage.current===page){scrolledPage.current=null;return;}
+    if(scrolledPage.current===page&&!jumping.current){scrolledPage.current=null;return;}
     const target=holder.current.querySelector<HTMLElement>(`[data-page="${page}"]`);
+    jumping.current=true;cancelAnimationFrame(jumpFrame.current);
+    jumpFrame.current=requestAnimationFrame(()=>{jumpFrame.current=requestAnimationFrame(()=>{jumping.current=false;});});
     if(target)holder.current.scrollTop+=target.getBoundingClientRect().top-holder.current.getBoundingClientRect().top-24;
   },[pdf,page]);
   const trackPage=()=>{
-    const box=holder.current;if(!pdf||!box)return;
+    const box=holder.current;if(!pdf||!box||jumping.current||typingPage.current)return;
     const bounds=box.getBoundingClientRect();
     const sheets=Array.from(box.querySelectorAll<HTMLElement>('[data-page]'));
     if(box.scrollHeight<=box.clientHeight+1)return;
@@ -67,13 +88,13 @@ export function PdfViewer({documents,documentId,page,onNavigate,onSnapshot,onErr
     if(number&&number!==current.current.page){scrolledPage.current=number;current.current.onNavigate(documentId,number);}
   };
   return <div className="viewer">
-    <div className="viewer-bar"><Icon name="file"/><select aria-label="Documento aperto" value={documentId} onChange={e=>onNavigate(e.target.value,1)}>{!documents.length&&<option value="">Nessun materiale</option>}{documents.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select><button className="icon-button" title="Riduci" disabled={zoom<=.6} onClick={()=>setZoom(z=>Math.max(.6,z-.2))}>−</button><button className="zoom" title="Adatta alla larghezza" onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button><button className="icon-button" title="Ingrandisci" disabled={zoom>=2} onClick={()=>setZoom(z=>Math.min(2,z+.2))}>+</button></div>
-    <div className="pdf-scroll" ref={holder} onScroll={trackPage} onMouseUp={()=>{const selection=window.getSelection();if(!selection?.rangeCount||!selection.toString().trim())return;const range=selection.getRangeAt(0);if(!holder.current?.contains(range.commonAncestorContainer))return;const node=range.startContainer.nodeType===Node.ELEMENT_NODE?range.startContainer as Element:range.startContainer.parentElement;const number=Number(node?.closest('[data-page]')?.getAttribute('data-page'))||page;if(number!==page){scrolledPage.current=number;onNavigate(documentId,number);}changeSnapshot({documentId,page:number,image:images.current.get(number),ready:doc?.kind==='note'||images.current.has(number),selection:selection.toString().trim().slice(0,15000)});}}>
+    <div className="viewer-bar"><Icon name="file"/><select aria-label="Documento aperto" value={documentId} onChange={e=>onNavigate(e.target.value,1)}>{!documents.length&&<option value="">Nessun materiale</option>}{documents.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select><button className="icon-button" title="Riduci" disabled={zoom<=.6} onClick={()=>setZoom(z=>Math.max(.6,z-.2))}>−</button><button className="zoom" title="Adatta alla larghezza" onClick={()=>setZoom(1)}>{Math.round(zoom*100)}%</button><button className="icon-button" title="Ingrandisci" disabled={zoom>=3} onClick={()=>setZoom(z=>Math.min(3,z+.2))}>+</button></div>
+    <div className="pdf-scroll" ref={holder} onScroll={trackPage}>
       {loading&&<div className="loading"><Spinner/> Apertura documento</div>}
       {!documentId&&<div className="empty"><Icon name="file" size={26}/><h3>Le tue slide, qui.</h3><p>Aggiungi PDF o appunti nella sezione Materiali.</p></div>}
       {doc?.kind==='note'&&<div className="note-page"><RichText text={note}/></div>}
       {pdf&&Array.from({length:pdf.numPages},(_,i)=><PdfPage key={documentId+':'+(i+1)} pdf={pdf} number={i+1} width={width} zoom={zoom} ratio={ratio} root={holder.current} onReady={ready} onError={onError}/>)}
     </div>
-    <div className="viewer-footer"><span>{doc?.kind==='pdf'?'Seleziona un passaggio per discuterne':'Appunti'}</span>{doc&&<div className="pagination"><button className="icon-button" aria-label="Pagina precedente" disabled={page<=1||loading} onClick={()=>onNavigate(documentId,page-1)}><Icon name="back" size={14}/></button><input aria-label="Numero pagina" value={draftPage} onChange={e=>setDraftPage(e.target.value)} onBlur={()=>{const n=Number(draftPage);if(Number.isInteger(n)&&n>=1&&n<=doc.pages)onNavigate(documentId,n);else setDraftPage(String(page));}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/><span>/ {doc.pages}</span><button className="icon-button" aria-label="Pagina successiva" disabled={page>=doc.pages||loading} onClick={()=>onNavigate(documentId,page+1)}><Icon name="chevron" size={14}/></button></div>}</div>
+    <div className="viewer-footer"><span>{doc?.kind==='pdf'?'Seleziona un passaggio per discuterne':'Appunti'}</span>{doc&&<div className="pagination"><button className="icon-button" aria-label="Pagina precedente" disabled={page<=1||loading} onClick={()=>jumpTo(page-1)}><Icon name="back" size={14}/></button><input aria-label="Numero pagina" value={draftPage} onChange={e=>setDraftPage(e.target.value)} onFocus={()=>{typingPage.current=true;}} onBlur={()=>{typingPage.current=false;const n=Number(draftPage);if(Number.isInteger(n)&&n>=1&&n<=doc.pages)jumpTo(n);else setDraftPage(String(page));}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/><span>/ {doc.pages}</span><button className="icon-button" aria-label="Pagina successiva" disabled={page>=doc.pages||loading} onClick={()=>jumpTo(page+1)}><Icon name="chevron" size={14}/></button></div>}</div>
   </div>;
 }

@@ -27,7 +27,9 @@ app.whenReady().then(async()=>{
     if(event.sender!==window?.webContents||event.senderFrame!==event.sender.mainFrame)return {ok:false,error:'Richiesta non autorizzata.'};
     try{
       let value;
-      if(action==='documents.import'){
+      if(action==='chat.attach'){
+        service.idle();await service.request('chat.attachments',payload);const result=await dialog.showOpenDialog(window!,{title:'Allega alla chat',properties:['openFile','multiSelections'],filters:[{name:'Contesto temporaneo',extensions:['pdf','txt','md','csv','png','jpg','jpeg','webp']}]});value=result.canceled?null:await service.attachFiles(payload,result.filePaths);
+      }else if(action==='documents.import'){
         service.idle();store.get(payload);const result=await dialog.showOpenDialog(window!,{title:'Aggiungi materiali',properties:['openFile','multiSelections'],filters:[{name:'Materiali didattici',extensions:['pdf','txt','md']}]});
         value=result.canceled?null:await service.importFiles(payload,result.filePaths);
       }else if(action==='course.export'){
