@@ -16,7 +16,7 @@ stemhelp brings your syllabus, slides, study roadmap, questions, and practice te
 - **Practice:** generate multiple-choice questions and written exercises for a topic. Save unfinished attempts; reveal feedback and worked solutions after submission.
 - **Back up a subject:** export its materials, roadmap, checks, and tests as a `.study` archive; import it from Settings.
 
-The interface is currently in Italian. The chat response language is independently selectable. The visual design is grayscale, with hidden scrollbars and normal scrolling.
+The interface is currently in Italian. The chat response language is independently selectable. The interface uses warm paper tones, serif reading text, and translucent glass-inspired controls. Navigation stays tucked away behind the floating stemhelp button; scrollbars remain hidden while content scrolls normally.
 
 ## Install from GitHub
 
@@ -81,7 +81,8 @@ If macOS blocks your own local build, use its **Privacy & Security** settings to
 - **Shift + Enter:** insert a newline.
 - **EN / IT:** choose the response language; your preference is saved.
 - **Highlight and ask:** select text in a PDF, note, or tutor reply. Type your question in the inline box and press Enter to add a **Question** card to the chat draft. Send it when ready, or remove it with ×. You can queue up to five questions.
-- **PDF zoom:** pinch on the trackpad, or hold Ctrl/Cmd while scrolling the mouse wheel over the PDF. Normal scrolling still moves through the document; the toolbar zoom controls remain available.
+- **Start studying:** use **Studia** in a subject header to open its first PDF, or enter from a topic for focused context.
+- **PDF zoom:** pinch on the trackpad, or hold Ctrl/Cmd while scrolling the mouse wheel over the PDF. Normal scrolling still moves through the document; the page selector floats at the bottom right. Choose the document from the menu below the chat input.
 - **Temporary attachments:** use the paperclip to add PDF, TXT, Markdown, CSV, PNG, JPEG, or WebP files to the current chat. Files remain available for follow-up messages until removed or the chat is reset. They are never added to course materials or exported archives.
 - **Auto-scroll:** follows new output until you scroll up. Return to the bottom to resume following it.
 - **Nuova chat:** clear the current conversation while retaining the course context.
@@ -97,7 +98,7 @@ Course data, copied materials, study checks, and tests are stored locally in SQL
 
 The legacy storage identity and `.study` archive format are retained so the rename from Study does not discard existing data. Moving the packaged app to another location can select a different archive; export/import subjects if you need to transfer them. Back up the data directory with the app closed, or export individual subjects from the app.
 
-AI processing is remote. Relevant syllabus text, retrieved passages, your question, chat context, an optional page image, and any temporary chat attachments are sent to OpenAI when you send a question. Credentials are encrypted through Electron safeStorage and the OS credential store; they are excluded from subject exports. Linux requires a supported secure credential backend for sign-in.
+AI processing is remote. Relevant syllabus text, retrieved passages, your question, chat context, the current page image when available, and any temporary chat attachments are sent to OpenAI when you send a question. Credentials are encrypted through Electron safeStorage and the OS credential store; they are excluded from subject exports. Linux requires a supported secure credential backend for sign-in.
 
 `.local-data/`, generated applications, build output, and local environment files are ignored by Git. Do not commit personal course archives, credentials, or copyrighted course materials when publishing a repository.
 

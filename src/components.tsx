@@ -7,6 +7,7 @@ import { api } from './api';
 import 'katex/dist/katex.min.css';
 export function Icon({name,size=18}:{name:string;size?:number}){
   const paths:Record<string,ReactNode>={
+    menu:<path d="M4 7h16M4 12h16M4 17h16"/>,
     book:<><path d="M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4zM20 4h-4a3 3 0 0 0-3 3v14a4 4 0 0 1 4-2h3z"/></>,
     attachment:<path d="m8 12 7-7a4 4 0 0 1 6 6L10 22a6 6 0 0 1-8-8L13 3m-8 13 9-9a2 2 0 0 1 3 3l-8 8"/>,
     plus:<path d="M12 5v14M5 12h14"/>,chevron:<path d="m9 5 7 7-7 7"/>,back:<path d="m14 5-7 7 7 7"/>,close:<path d="m6 6 12 12M6 18 18 6"/>,
