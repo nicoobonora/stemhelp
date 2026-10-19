@@ -12,11 +12,11 @@ stemhelp brings your syllabus, slides, study roadmap, questions, and practice te
 - **Build a study roadmap:** generate an editable topic tree from the syllabus and available materials. Review the proposal before applying it. Add more slides as the course progresses.
 - **Track progress yourself:** mark individual learning objectives as studied. The AI never checks them for you.
 - **Study alongside your slides:** scroll continuously through PDF pages alongside the chat, resize the panels by dragging the divider, and follow source links back to their pages. Arrows and the page-number field remain available; the chat follows the page currently in view.
-- **Ask focused questions:** include selected PDF text, an image of the current page, or a quoted passage from a tutor reply. Switch replies between English (default) and Italian.
+- **Ask focused questions:** include selected PDF text, an image of the current page, or a quoted passage from a tutor reply. Replies default to English; switch to the app language when it differs from English.
 - **Practice:** generate multiple-choice questions and written exercises for a topic. Save unfinished attempts; reveal feedback and worked solutions after submission.
 - **Back up a subject:** export its materials, roadmap, checks, and tests as a `.study` archive; import it from Settings.
 
-The interface is currently in Italian. The chat response language is independently selectable. The interface uses warm paper tones, serif reading text, and translucent glass-inspired controls. Navigation stays tucked away behind the floating stemhelp button; scrollbars remain hidden while content scrolls normally.
+The interface defaults to English. Choose **English** or **Italiano** under **Settings → App language**; your choice is saved and applies immediately. The tutor defaults independently to English. With the app set to Italian, the chat offers EN / IT. With the app set to English, only EN appears. Switching the interface does not translate existing course content or conversations. The interface uses warm paper tones, serif reading text, and translucent glass-inspired controls. Navigation stays tucked away behind the floating stemhelp button; scrollbars remain hidden while content scrolls normally.
 
 ## Install from GitHub
 
@@ -79,7 +79,7 @@ If macOS blocks your own local build, use its **Privacy & Security** settings to
 
 - **Enter:** send a question.
 - **Shift + Enter:** insert a newline.
-- **EN / IT:** choose the response language; your preference is saved.
+- **Chat language:** English by default, or the selected app language. When Italian is selected for the app, use EN / IT below the input. Your response-language preference is saved separately from the app language.
 - **Highlight and ask:** select text in a PDF, note, or tutor reply. Type your question in the inline box and press Enter to add a **Question** card to the chat draft. Send it when ready, or remove it with ×. You can queue up to five questions.
 - **Start studying:** use **Studia** in a subject header to open its first PDF, or enter from a topic for focused context.
 - **PDF zoom:** pinch on the trackpad, or hold Ctrl/Cmd while scrolling the mouse wheel over the PDF. Normal scrolling still moves through the document; the page selector floats at the bottom right. Choose the document from the menu below the chat input.

@@ -9,7 +9,7 @@ try{
   desktop=await electron.launch({args:[resolve('.')],env,timeout:30000});const page=await desktop.firstWindow();await page.waitForLoadState('domcontentloaded');
   await page.waitForFunction(()=>!!window.study);
   const request=(action,payload)=>page.evaluate(({action,payload})=>window.study.request(action,payload),{action,payload});
-  const state=await request('app.state');if(!state.auth.signedIn)throw new Error('Account non collegato: nessun test AI eseguito.');
+  const state=await request('app.state');const ui=text=>state.language==='it'?text:({'Apri navigazione':'Open navigation','Materiali':'Materials','Apri':'Open'}[text]||text);if(!state.auth.signedIn)throw new Error('Account non collegato: nessun test AI eseguito.');
   const models=await request('auth.models');const model=models.find(m=>m.id===state.model)?.id||models[0]?.id;if(!model)throw new Error('Nessun modello disponibile.');
   console.log('Account collegato; catalogo modelli disponibile.');
   const course=await request('course.save',{id:'',title:'Verifica tecnica temporanea',description:'Dati sintetici per la verifica dell’app; verranno rimossi alla fine.',syllabus:'Algebra lineare: definire autovalori e autovettori, calcolarli per matrici diagonali 2x2. Comprendere la diagonalizzazione come cambio di base. Non sono richiesti teoremi spettrali avanzati.'});courseId=course.id;
@@ -18,7 +18,7 @@ try{
   await request('documents.import',courseId);console.log('PDF importato. Generazione reale dell’albero…');
   const generated=await request('tree.generate',{courseId,model});if(!generated.draft?.nodes.length)throw new Error('Nessuna proposta generata.');await request('tree.apply',courseId);const detail=await request('course.get',courseId);const topic=detail.tree[0];console.log(`Albero reale valido: ${detail.tree.length} argomenti.`);
   // Load the real PDF viewer to include the rendered page in the request.
-  await page.reload();await page.getByRole('button',{name:'Apri navigazione',exact:true}).click();await page.locator('.course-nav button').filter({hasText:'Verifica tecnica temporanea'}).click();await page.getByRole('button',{name:'Materiali',exact:true}).click();await page.getByRole('button',{name:'Apri',exact:true}).click();await page.waitForFunction(()=>document.querySelector('.textLayer')?.textContent?.includes('Autovalori'));
+  await page.reload();await page.getByRole('button',{name:ui('Apri navigazione'),exact:true}).click();await page.locator('.course-nav button').filter({hasText:'Verifica tecnica temporanea'}).click();await page.getByRole('button',{name:ui('Materiali'),exact:true}).click();await page.getByRole('button',{name:ui('Apri'),exact:true}).click();await page.waitForFunction(()=>document.querySelector('.textLayer')?.textContent?.includes('Autovalori'));
   const image=await page.locator('canvas').evaluate(c=>c.toDataURL('image/jpeg',.8));
   const answer=await request('chat.ask',{courseId,topicId:topic.id,model,question:'Spiega in non più di 80 parole la relazione nella pagina, includendo le ipotesi. Cita la pagina fornita.',documentId:detail.documents[0].id,page:1,selection:'',image});if(!answer.trim())throw new Error('Risposta vuota.');console.log('Chat reale con immagine del PDF completata.');
   await request('chat.reset',{courseId,topicId:topic.id});if((await request('chat.get',{courseId,topicId:topic.id})).length)throw new Error('Reset non riuscito.');

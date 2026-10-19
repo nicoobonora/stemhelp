@@ -1,3 +1,4 @@
+import { tr } from './i18n';
 import { useEffect, useRef, type ReactNode } from 'react';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -21,11 +22,11 @@ export function Icon({name,size=18}:{name:string;size?:number}){
 export function Modal({title,children,onClose,wide=false}:{title:string;children:ReactNode;onClose:()=>void;wide?:boolean}){
   const ref=useRef<HTMLDialogElement>(null);
   useEffect(()=>{const dialog=ref.current!;dialog.showModal();return()=>dialog.close();},[]);
-  return <dialog ref={ref} className={`modal ${wide?'wide':''}`} onCancel={e=>{e.preventDefault();onClose();}} onClick={e=>{if(e.target===ref.current){const r=ref.current!.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)onClose();}}}><header className="modal-head"><h2>{title}</h2><button aria-label="Chiudi" className="icon-button" onClick={onClose}><Icon name="close"/></button></header>{children}</dialog>;
+  return <dialog ref={ref} className={`modal ${wide?'wide':''}`} onCancel={e=>{e.preventDefault();onClose();}} onClick={e=>{if(e.target===ref.current){const r=ref.current!.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)onClose();}}}><header className="modal-head"><h2>{title}</h2><button aria-label={tr("Chiudi")} className="icon-button" onClick={onClose}><Icon name="close"/></button></header>{children}</dialog>;
 }
 export function RichText({text,onSource}:{text:string;onSource?:(id:string,page:number)=>void}){
   const normalized=text.replace(/\\\[([\s\S]*?)\\\]/g,(_,m)=>`\n$$${m}$$\n`).replace(/\\\(([\s\S]*?)\\\)/g,(_,m)=>`$${m}$`);
   return <div className="rich"><Markdown remarkPlugins={[remarkGfm,remarkMath]} rehypePlugins={[rehypeKatex]} urlTransform={url=>/^(https?:|study:|#)/.test(url)?url:''} components={{a:({href,children})=><a href={href} onClick={e=>{e.preventDefault();if(href?.startsWith('study://document/')){const [,doc,page]=href.match(/^study:\/\/document\/([^/]+)\/(\d+)$/)||[];if(doc)onSource?.(doc,Number(page));}else if(href?.startsWith('http'))void api('link.open',href).catch(()=>{});}}>{children}</a>,img:()=>null}}>{normalized}</Markdown></div>;
 }
 export function Empty({title,children,action}:{title:string;children:ReactNode;action?:ReactNode}){return <div className="empty"><Icon name="book" size={28}/><h3>{title}</h3><p>{children}</p>{action}</div>;}
-export function Spinner(){return <span className="spinner" aria-label="In corso"/>;}
+export function Spinner(){return <span className="spinner" aria-label={tr("In corso")}/>;}

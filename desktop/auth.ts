@@ -1,3 +1,4 @@
+import { translateMessage, type AppLanguage } from './localization.js';
 import { createServer } from 'node:http';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
@@ -20,7 +21,7 @@ export class Auth {
   private refreshing?: Promise<string>;
   private recoveryWarning?: string;
   private preserveVault = false;
-  constructor(directory: string) {
+  constructor(directory: string, private language:()=>AppLanguage=()=> 'en') {
     this.path = join(directory, 'credentials.enc');
     if (existsSync(this.path)) {
       this.checkEncryption();
@@ -75,7 +76,7 @@ export class Auth {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
         if (req.method !== 'GET' || url.pathname !== '/auth/callback') { res.writeHead(404); res.end('Not found'); return; }
-        if (consumed || url.searchParams.get('state') !== t.state) { res.writeHead(400); res.end('Richiesta non valida.'); return; }
+        if (consumed || url.searchParams.get('state') !== t.state) { res.writeHead(400); res.end(translateMessage('Richiesta non valida.',this.language())); return; }
         consumed = true;
         try {
           const { code, clientId } = validateCallback(t, url);
@@ -90,9 +91,9 @@ export class Auth {
             expiresAt: Date.now() + tokens.expires_in * 1000, scope: tokens.scope! };
           this.vault.accounts = [...this.vault.accounts.filter(a => a.clientId !== clientId), account];
           this.vault.active = clientId; this.recoveryWarning = undefined; this.save();
-          res.end('Accesso completato. Puoi chiudere questa scheda e tornare a stemhelp.');
+          res.end(translateMessage('Accesso completato. Puoi chiudere questa scheda e tornare a stemhelp.',this.language()));
           finish();
-        } catch (error) { res.writeHead(400); res.end('Accesso non completato. Torna a stemhelp per riprovare.'); finish(error instanceof Error ? error : new Error('Accesso non riuscito.')); }
+        } catch (error) { res.writeHead(400); res.end(translateMessage('Accesso non completato. Torna a stemhelp per riprovare.',this.language())); finish(error instanceof Error ? error : new Error('Accesso non riuscito.')); }
       });
       shell.openExternal(authorizationUrl(t, this.vault.hostId, selected?.idToken)).catch(() => finish(new Error('Impossibile aprire il browser.')));
     });

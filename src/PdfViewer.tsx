@@ -1,3 +1,4 @@
+import { tr } from './i18n';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { getDocument, GlobalWorkerOptions, TextLayer, type PDFDocumentProxy, type RenderTask } from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
@@ -24,10 +25,10 @@ function PdfPage({pdf,number,width,zoom,ratio,root,onReady,onError}:{pdf:PDFDocu
       const content=await item.getTextContent();if(!active)return;layer=new TextLayer({textContentSource:content,container,viewport});await layer.render();if(!active)return;
       const thumb=document.createElement('canvas'),factor=Math.min(1,1600/element.width);thumb.width=element.width*factor;thumb.height=element.height*factor;thumb.getContext('2d')!.drawImage(element,0,0,thumb.width,thumb.height);
       onReady(number,thumb.toDataURL('image/jpeg',.84));
-    })().catch(e=>{if(active&&e.name!=='RenderingCancelledException')onError('Impossibile visualizzare la pagina: '+e.message);}).finally(()=>{if(active)setRendering(false);});
+    })().catch(e=>{if(active&&e.name!=='RenderingCancelledException')onError(tr("Impossibile visualizzare la pagina: ")+e.message);}).finally(()=>{if(active)setRendering(false);});
     return()=>{active=false;task?.cancel();layer?.cancel();onReady(number);element.width=0;element.height=0;container.replaceChildren();};
   },[pdf,number,width,zoom,near,onReady]);
-  return <div ref={sheet} className="pdf-sheet continuous-page" data-page={number} aria-label={`Pagina ${number}`} style={{width:width*zoom,height:width*zoom/aspect}}>{near&&<><canvas ref={canvas}/><div ref={text} className="textLayer"/>{rendering&&<span className="page-loading"><Spinner/></span>}</>}</div>;
+  return <div ref={sheet} className="pdf-sheet continuous-page" data-page={number} aria-label={tr("Pagina {0}",{0:number})} style={{width:width*zoom,height:width*zoom/aspect}}>{near&&<><canvas ref={canvas}/><div ref={text} className="textLayer"/>{rendering&&<span className="page-loading"><Spinner/></span>}</>}</div>;
 }
 export function PdfViewer({documents,documentId,page,onNavigate,onSnapshot,onError}:{documents:Document[];documentId:string;page:number;onNavigate:(id:string,page:number)=>void;onSnapshot:(snapshot:PageSnapshot)=>void;onError:(message:string)=>void}){
   const [pdf,setPdf]=useState<PDFDocumentProxy|null>(null),[note,setNote]=useState(''),[loading,setLoading]=useState(false),[zoom,setZoom]=useState(1),[width,setWidth]=useState(600),[draftPage,setDraftPage]=useState(String(page)),[ratio,setRatio]=useState(1.414);
@@ -89,11 +90,11 @@ export function PdfViewer({documents,documentId,page,onNavigate,onSnapshot,onErr
   };
   return <div className="viewer">
     <div className="pdf-scroll" ref={holder} onScroll={trackPage}>
-      {loading&&<div className="loading"><Spinner/> Apertura documento</div>}
-      {!documentId&&<div className="empty"><Icon name="file" size={26}/><h3>Le tue slide, qui.</h3><p>Aggiungi PDF o appunti nella sezione Materiali.</p></div>}
+      {loading&&<div className="loading"><Spinner/> {tr("Apertura documento")}</div>}
+      {!documentId&&<div className="empty"><Icon name="file" size={26}/><h3>{tr("Le tue slide, qui.")}</h3><p>{tr("Aggiungi PDF o appunti nella sezione Materiali.")}</p></div>}
       {doc?.kind==='note'&&<div className="note-page"><RichText text={note}/></div>}
       {pdf&&Array.from({length:pdf.numPages},(_,i)=><PdfPage key={documentId+':'+(i+1)} pdf={pdf} number={i+1} width={width} zoom={zoom} ratio={ratio} root={holder.current} onReady={ready} onError={onError}/>)}
     </div>
-    <div className="viewer-footer">{doc&&<div className="pagination"><button className="icon-button" aria-label="Pagina precedente" disabled={page<=1||loading} onClick={()=>jumpTo(page-1)}><Icon name="back" size={14}/></button><input aria-label="Numero pagina" value={draftPage} onChange={e=>setDraftPage(e.target.value)} onFocus={()=>{typingPage.current=true;}} onBlur={()=>{typingPage.current=false;const n=Number(draftPage);if(Number.isInteger(n)&&n>=1&&n<=doc.pages)jumpTo(n);else setDraftPage(String(page));}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/><span>/ {doc.pages}</span><button className="icon-button" aria-label="Pagina successiva" disabled={page>=doc.pages||loading} onClick={()=>jumpTo(page+1)}><Icon name="chevron" size={14}/></button></div>}</div>
+    <div className="viewer-footer">{doc&&<div className="pagination"><button className="icon-button" aria-label={tr("Pagina precedente")} disabled={page<=1||loading} onClick={()=>jumpTo(page-1)}><Icon name="back" size={14}/></button><input aria-label={tr("Numero pagina")} title={tr("Scrivi il numero di pagina e premi Invio")} inputMode="numeric" autoComplete="off" spellCheck={false} disabled={loading} value={draftPage} onChange={e=>setDraftPage(e.target.value)} onFocus={e=>{typingPage.current=true;e.currentTarget.select();}} onBlur={()=>{typingPage.current=false;const n=Number(draftPage);if(Number.isInteger(n)&&n>=1&&n<=doc.pages)jumpTo(n);else setDraftPage(String(page));}} onKeyDown={e=>{if(e.key==='Enter')e.currentTarget.blur();}}/><span>/ {doc.pages}</span><button className="icon-button" aria-label={tr("Pagina successiva")} disabled={page>=doc.pages||loading} onClick={()=>jumpTo(page+1)}><Icon name="chevron" size={14}/></button></div>}</div>
   </div>;
 }
