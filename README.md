@@ -82,7 +82,7 @@ If macOS blocks your own local build, use its **Privacy & Security** settings to
 - **Chat language:** English by default, or the selected app language. When Italian is selected for the app, use EN / IT below the input. Your response-language preference is saved separately from the app language.
 - **Highlight and ask:** select text in a PDF, note, or tutor reply. Type your question in the inline box and press Enter to add a **Question** card to the chat draft. Send it when ready, or remove it with ×. You can queue up to five questions.
 - **Start studying:** use **Studia** in a subject header to open its first PDF, or enter from a topic for focused context.
-- **PDF zoom:** pinch on the trackpad, or hold Ctrl/Cmd while scrolling the mouse wheel over the PDF. Normal scrolling still moves through the document; the page selector floats at the bottom right. Choose the document from the menu below the chat input.
+- **PDF zoom:** pinch on the trackpad, or hold Ctrl/Cmd while scrolling the mouse wheel over the PDF. Normal scrolling still moves through the document; the page selector floats at the bottom right. Choose the document from the floating selector at the top right of the PDF viewer.
 - **Temporary attachments:** use the paperclip to add PDF, TXT, Markdown, CSV, PNG, JPEG, or WebP files to the current chat. Files remain available for follow-up messages until removed or the chat is reset. They are never added to course materials or exported archives.
 - **Auto-scroll:** follows new output until you scroll up. Return to the bottom to resume following it.
 - **Nuova chat:** clear the current conversation while retaining the course context.

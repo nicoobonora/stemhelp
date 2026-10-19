@@ -89,6 +89,7 @@ export function PdfViewer({documents,documentId,page,onNavigate,onSnapshot,onErr
     if(number&&number!==current.current.page){scrolledPage.current=number;current.current.onNavigate(documentId,number);}
   };
   return <div className="viewer">
+    <label className="viewer-document-picker" title={tr("Documento aperto")}><Icon name="file" size={16}/><select aria-label={tr("Documento aperto")} value={documentId} disabled={!documents.length} onChange={e=>onNavigate(e.target.value,1)}>{!documents.length&&<option value="">{tr("Nessun materiale")}</option>}{documents.map(d=><option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
     <div className="pdf-scroll" ref={holder} onScroll={trackPage}>
       {loading&&<div className="loading"><Spinner/> {tr("Apertura documento")}</div>}
       {!documentId&&<div className="empty"><Icon name="file" size={26}/><h3>{tr("Le tue slide, qui.")}</h3><p>{tr("Aggiungi PDF o appunti nella sezione Materiali.")}</p></div>}

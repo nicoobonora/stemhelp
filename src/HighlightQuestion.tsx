@@ -1,12 +1,19 @@
 import { tr } from './i18n';
 import { Icon } from './components';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 export interface HighlightDraft {id:string;text:string;question:string;documentId?:string;page?:number;messageIndex?:number;label:string}
 export function HighlightQuestion({documentId,documentName,page,busy,onAdd}:{documentId:string;documentName:string;page:number;busy:boolean;onAdd:(draft:HighlightDraft)=>void}){
   const [picked,setPicked]=useState<Omit<HighlightDraft,'id'|'question'>&{left:number;top:number}|null>(null),[question,setQuestion]=useState('');
-  const panel=useRef<HTMLFormElement>(null);
+  const panel=useRef<HTMLFormElement>(null),passage=useRef<Range|null>(null);
+  // Keep the selected passage painted when keyboard focus moves to the question.
+  useLayoutEffect(()=>{
+    if(picked&&passage.current)CSS.highlights.set('study-passage',new Highlight(passage.current));
+    else CSS.highlights.delete('study-passage');
+    return()=>{CSS.highlights.delete('study-passage');};
+  },[picked]);
   useEffect(()=>{
+    setPicked(null);
     const capture=(event:Event)=>{
       if(panel.current?.contains(event.target as Node)||busy)return;
       const selection=window.getSelection();if(!selection?.rangeCount||selection.isCollapsed){setPicked(null);return;}
@@ -16,6 +23,7 @@ export function HighlightQuestion({documentId,documentName,page,busy,onAdd}:{doc
       const source=reply||sheet||note;if(!source||!source.closest('.study-layout')||!source.contains(range.endContainer)){setPicked(null);return;}
       const rect=range.getBoundingClientRect();if(!rect.width&&!rect.height)return;
       const top=rect.bottom+10+94<window.innerHeight?rect.bottom+10:Math.max(8,rect.top-104);
+      passage.current=range.cloneRange();
       setQuestion('');setPicked({text,left:Math.max(8,Math.min(rect.left,window.innerWidth-350)),top,...reply?{messageIndex:Number(reply.dataset.replyIndex),label:'Tutor'}:{documentId,page:Number(sheet?.dataset.page)||page,label:documentName+' · p. '+(Number(sheet?.dataset.page)||page)}});
     };
     const dismiss=(event:Event)=>{if(!panel.current?.contains(event.target as Node))setPicked(null);};
